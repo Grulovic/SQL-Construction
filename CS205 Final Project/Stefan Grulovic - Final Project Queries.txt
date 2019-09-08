@@ -1,0 +1,99 @@
+1)
+
+select r.reservation_id, r.customer_id, r.guide_id, r.excursion_id, r.reservation_date, r.reservation_people, r.reservation_request, r.packet_id,
+        p.packet_desc, p.packet_insu, p.packet_insu_price,
+          g.guide_name, g.guide_gender, g.guide_salary, g.guide_hire_date,
+           c.customer_name, c.membership_id, c.customer_region, c.customer_address, c.customer_number,
+            m.membership_status, m.membership_type, m.membership_discount,
+              e.excursion_dep, e.excursion_ret, e.location_id, e.arrangement_id, e.transport_id,
+               t.transport_type, t.transport_price,
+                l.location_location, l.location_type, l.location_price,
+                 a.arrangement_desc, a.arrangement_price
+from reservation r, packet p, guide g, customer c, membership m, excursion e, transport t, location l, arrangement a
+where r.excursion_id = e.excursion_id 
+and r.packet_id = p.packet_id
+and r.guide_id = g.guide_id
+and r.customer_id = c.customer_id
+and c.membership_id = m.membership_id
+and e.location_id = l.location_id
+and e.arrangement_id = a.arrangement_id
+and e.transport_id = t.transport_id;
+
+
+2)
+
+select distinct c.customer_name, c.customer_number, c.customer_address, m.membership_type
+from customer c, membership m
+where c.membership_id = m.membership_id
+and c.membership_id = 'N';
+
+3)
+
+create or replace view num_of_reservations as
+select c.customer_name, count(r.reservation_id) as "NUM_OF_RESERVATIONS"
+from customer c, reservation r
+where c.customer_id = r.customer_id
+group by customer_name;
+
+select c.customer_id, sum((p.packet_price + p.packet_insu_price + l.location_price + t.transport_price + a.arrangement_price)*DECODE(m.membership_discount, 0, 1, 10, 0.9, 15, 0.85, 20, 0.8, 25, 0.75)*nr.num_of_reservations) as "AMOUNT_OWED"
+from reservation r, packet p, guide g, customer c, membership m, excursion e, transport t, location l, arrangement a, num_of_reservations nr
+where r.excursion_id = e.excursion_id 
+and r.packet_id = p.packet_id
+and r.guide_id = g.guide_id
+and r.customer_id = c.customer_id
+and c.membership_id = m.membership_id
+and e.location_id = l.location_id
+and e.arrangement_id = a.arrangement_id
+and e.transport_id = t.transport_id
+and c.customer_name = nr.customer_name
+group by c.customer_id 
+order by c.customer_id desc;
+
+4)
+
+select e.excursion_id, l.location_location, round((e.excursion_dep - sysdate),1) as "DAYS_UNTIL_DEP", e.excursion_dep, (e.excursion_ret - e.excursion_dep) as "DAYS_ON_TRIP", e.excursion_ret
+from excursion e, transport t, location l, arrangement a
+where e.location_id = l.location_id
+and e.arrangement_id = a.arrangement_id
+and e.transport_id = t.transport_id
+and l.location_location = 'Vermont'
+and e.excursion_dep > sysdate;
+
+5)
+
+select r.reservation_id, c.customer_name, r.reservation_request, m.membership_type
+from customer c, reservation r, membership m
+where c.customer_id = r.customer_id
+and m.membership_id = c.membership_id 
+and membership_status='Y'
+and r.reservation_request != 'None'
+order by decode(m.membership_type, 'Basic', 1, 'Silver', 2, 'Gold', 3, 'Platinum', 4) desc, r.reservation_request;
+
+6)
+
+create or replace view reservation_full_table as
+select r.reservation_id, r.customer_id, r.guide_id, r.excursion_id, r.reservation_date, r.reservation_people, r.reservation_request, r.packet_id,
+        p.packet_desc, p.packet_insu, p.packet_insu_price,
+          g.guide_name, g.guide_gender, g.guide_salary, g.guide_hire_date,
+           c.customer_name, c.membership_id, c.customer_region, c.customer_address, c.customer_number,
+            m.membership_status, m.membership_type, m.membership_discount,
+             e.excursion_dep, e.excursion_ret, e.location_id, e.arrangement_id, e.transport_id,
+               t.transport_type, t.transport_price,
+                l.location_location, l.location_type, l.location_price,
+                 a.arrangement_desc, a.arrangement_price
+from reservation r, packet p, guide g, customer c, membership m, excursion e, transport t, location l, arrangement a
+where r.excursion_id = e.excursion_id 
+and r.packet_id = p.packet_id
+and r.guide_id = g.guide_id
+and r.customer_id = c.customer_id
+and c.membership_id = m.membership_id
+and e.location_id = l.location_id
+and e.arrangement_id = a.arrangement_id
+and e.transport_id = t.transport_id;
+
+select location_location, (count(*) + reservation_people) as "NUM_OF_PEOPLE_GOING"
+from reservation_full_table
+group by location_location
+order by count(*) desc;
+
+
